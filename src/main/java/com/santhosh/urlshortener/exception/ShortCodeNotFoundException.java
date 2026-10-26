@@ -1,4 +1,4 @@
-package com.santhosh.urlshortener.exceptionHandler;
+package com.santhosh.urlshortener.exception;
 
 public class ShortCodeNotFoundException extends RuntimeException {
     public ShortCodeNotFoundException(String shortCode) {

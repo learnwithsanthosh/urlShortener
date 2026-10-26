@@ -1,11 +1,13 @@
 package com.santhosh.urlshortener.service;
 
-import com.santhosh.urlshortener.exceptionHandler.ShortCodeNotFoundException;
+import com.santhosh.urlshortener.entity.UrlMapping;
+import com.santhosh.urlshortener.exception.MaxRetriesExceededException;
+import com.santhosh.urlshortener.exception.ShortCodeNotFoundException;
+import com.santhosh.urlshortener.repository.UrlMappingRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class UrlService {
@@ -13,20 +15,25 @@ public class UrlService {
             "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static final int CODE_LENGTH=7;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-
-    private final Map<String, String> values = new ConcurrentHashMap<>();
     private final int MAX_RETRIES = 5;
 
+    private final UrlMappingRepository urlMappingRepository;
+
+    UrlService(UrlMappingRepository urlMappingRepository){
+        this.urlMappingRepository=urlMappingRepository;
+    }
+
+    @Transactional
     public String create(String url){
-        for(int i=0;i<MAX_RETRIES;i++) {
+        for(int i = 0; i< MAX_RETRIES; i++) {
             String shortCode = generateRandomCode();
-            String existingUrl = values.putIfAbsent(shortCode, url);
-            if (existingUrl == null) {
+            if (!urlMappingRepository.existsByShortCode(shortCode)) {
+                UrlMapping urlMapping= new UrlMapping(shortCode,url);
+                urlMappingRepository.save(urlMapping);
                 return shortCode;
             }
         }
-        throw new IllegalStateException(
-                "Unable to generate a unique short code after "+ MAX_RETRIES+" attempts"
+        throw new MaxRetriesExceededException("Failed to generate a unique short code after " + MAX_RETRIES + " attempts."
         );
     }
     private String generateRandomCode(){
@@ -38,13 +45,11 @@ public class UrlService {
         return sc.toString();
     }
 
+    @Transactional(readOnly = true)
     public String resolve(String shortCode){
-        if(values.containsKey(shortCode)){
-            return values.get(shortCode);
-        }
-        else{
-            throw new ShortCodeNotFoundException(shortCode);
-        }
+        return urlMappingRepository.findByShortCode(shortCode)
+                .map(UrlMapping::getOriginalUrl)
+                .orElseThrow(()-> new ShortCodeNotFoundException(shortCode));
     }
 
 }
