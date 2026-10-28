@@ -16,7 +16,6 @@ import java.time.Instant;
 public class UrlMapping {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "original_url", nullable = false, length = 2048)
@@ -31,7 +30,8 @@ public class UrlMapping {
     protected UrlMapping() {
     }
 
-    public UrlMapping(String shortCode, String originalUrl) {
+    public UrlMapping(Long id,String shortCode, String originalUrl) {
+        this.id=id;
         this.shortCode = shortCode;
         this.originalUrl = originalUrl;
     }
@@ -57,5 +57,8 @@ public class UrlMapping {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+    public void setId(Long id) {
+        this.id = id;
     }
 }
